@@ -92,6 +92,7 @@ const analyticsPeriodOptions = [
 
 export function DashboardApp() {
   const [session, setSession] = useState<AuthSession | null>(null);
+  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
   const [payload, setPayload] = useState<DashboardPayload>(emptyPayload);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [roomsCatalog, setRoomsCatalog] = useState<OperatingRoom[]>([]);
@@ -134,7 +135,12 @@ export function DashboardApp() {
   useEffect(() => {
     const serialized = window.localStorage.getItem(SESSION_STORAGE_KEY);
     if (!serialized) {
-      setIsBootstrapping(false);
+      if (!autoLoginAttempted) {
+        setAutoLoginAttempted(true);
+        void autoLoginWithDefaultCredentials();
+      } else {
+        setIsBootstrapping(false);
+      }
       return;
     }
 
@@ -147,7 +153,31 @@ export function DashboardApp() {
       setIsBootstrapping(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [autoLoginAttempted]);
+
+  async function autoLoginWithDefaultCredentials() {
+    setIsBootstrapping(true);
+    setIsSubmittingLogin(true);
+    setLoadError(null);
+
+    try {
+      const response = await loginRequest({
+        email: "centrocirurgico@simplesurgery.com.br",
+        password: "simplesurgery",
+      });
+      const nextSession = {
+        accessToken: response.access_token,
+        user: response.user,
+      };
+      setSession(nextSession);
+      window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+      await hydrateAll(nextSession.accessToken, nextSession.user);
+    } catch {
+      setIsBootstrapping(false);
+    } finally {
+      setIsSubmittingLogin(false);
+    }
+  }
 
   useEffect(() => {
     if (!surgeryForm.patient_id && patients.length > 0) {
