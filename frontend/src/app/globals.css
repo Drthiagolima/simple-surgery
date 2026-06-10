@@ -81,6 +81,11 @@
   --sidebar-accent-foreground: oklch(0.9 0.01 92);
   --sidebar-border: oklch(0.34 0.02 90 / 0.7);
   --sidebar-ring: oklch(0.73 0.1 95);
+  --ss-body-gradient:
+    radial-gradient(circle at 8% 8%, rgba(184, 142, 57, 0.17), transparent 33%),
+    radial-gradient(circle at 90% 0%, rgba(109, 149, 66, 0.2), transparent 28%),
+    linear-gradient(135deg, rgba(8, 10, 9, 0.95), rgba(25, 29, 24, 0.97));
+  --ss-panel-shadow: 0 24px 40px rgba(0, 0, 0, 0.34);
 }
 
 .dark {
@@ -115,6 +120,50 @@
   --sidebar-accent-foreground: oklch(0.9 0.01 92);
   --sidebar-border: oklch(0.34 0.02 90 / 0.7);
   --sidebar-ring: oklch(0.73 0.1 95);
+  --ss-body-gradient:
+    radial-gradient(circle at 8% 8%, rgba(184, 142, 57, 0.17), transparent 33%),
+    radial-gradient(circle at 90% 0%, rgba(109, 149, 66, 0.2), transparent 28%),
+    linear-gradient(135deg, rgba(8, 10, 9, 0.95), rgba(25, 29, 24, 0.97));
+  --ss-panel-shadow: 0 24px 40px rgba(0, 0, 0, 0.34);
+}
+
+.light {
+  --background: oklch(0.97 0.012 95);
+  --foreground: oklch(0.26 0.02 88);
+  --card: oklch(0.995 0.008 95);
+  --card-foreground: oklch(0.28 0.02 88);
+  --popover: oklch(0.99 0.008 95);
+  --popover-foreground: oklch(0.28 0.02 88);
+  --primary: oklch(0.65 0.1 108);
+  --primary-foreground: oklch(0.98 0.01 95);
+  --secondary: oklch(0.91 0.015 94);
+  --secondary-foreground: oklch(0.35 0.02 88);
+  --muted: oklch(0.93 0.012 94);
+  --muted-foreground: oklch(0.5 0.02 92);
+  --accent: oklch(0.66 0.1 70);
+  --accent-foreground: oklch(0.98 0.01 95);
+  --destructive: oklch(0.62 0.19 30);
+  --border: oklch(0.82 0.02 92 / 0.8);
+  --input: oklch(0.95 0.01 95);
+  --ring: oklch(0.64 0.09 100);
+  --chart-1: oklch(0.65 0.1 108);
+  --chart-2: oklch(0.66 0.1 70);
+  --chart-3: oklch(0.62 0.11 40);
+  --chart-4: oklch(0.61 0.1 140);
+  --chart-5: oklch(0.6 0.07 92);
+  --sidebar: oklch(0.95 0.012 95);
+  --sidebar-foreground: oklch(0.3 0.02 88);
+  --sidebar-primary: oklch(0.65 0.1 108);
+  --sidebar-primary-foreground: oklch(0.98 0.01 95);
+  --sidebar-accent: oklch(0.91 0.015 94);
+  --sidebar-accent-foreground: oklch(0.35 0.02 88);
+  --sidebar-border: oklch(0.82 0.02 92 / 0.8);
+  --sidebar-ring: oklch(0.64 0.09 100);
+  --ss-body-gradient:
+    radial-gradient(circle at 8% 8%, rgba(184, 142, 57, 0.12), transparent 38%),
+    radial-gradient(circle at 90% 0%, rgba(109, 149, 66, 0.13), transparent 34%),
+    linear-gradient(135deg, rgba(247, 249, 244, 0.98), rgba(236, 241, 235, 0.98));
+  --ss-panel-shadow: 0 18px 34px rgba(56, 68, 52, 0.12);
 }
 
 @layer base {
@@ -123,10 +172,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image:
-      radial-gradient(circle at 8% 8%, rgba(184, 142, 57, 0.17), transparent 33%),
-      radial-gradient(circle at 90% 0%, rgba(109, 149, 66, 0.2), transparent 28%),
-      linear-gradient(135deg, rgba(8, 10, 9, 0.95), rgba(25, 29, 24, 0.97));
+    background-image: var(--ss-body-gradient);
     background-attachment: fixed;
   }
   html {
@@ -146,7 +192,8 @@
 
 @layer components {
   .ss-panel {
-    @apply rounded-3xl border border-border bg-card/70 shadow-[0_24px_40px_rgba(0,0,0,0.34)] backdrop-blur-md;
+    @apply rounded-3xl border border-border bg-card/70 backdrop-blur-md;
+    box-shadow: var(--ss-panel-shadow);
   }
 
   .ss-chip {

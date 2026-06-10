@@ -57,6 +57,7 @@ import {
 } from "@/lib/api";
 
 const SESSION_STORAGE_KEY = "simple-surgery:auth-session";
+const THEME_STORAGE_KEY = "simple-surgery:theme-mode";
 
 const statusLabels: Record<string, string> = {
   scheduled: "Agendada",
@@ -92,6 +93,8 @@ type EventFormState = {
   event_type: string;
   occurred_at: string;
 };
+
+type ThemeMode = "dark" | "light";
 
 const emptyPayload: DashboardPayload = {
   overview: null,
@@ -173,6 +176,7 @@ export function DashboardApp() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [scannerStep, setScannerStep] = useState<string>("rpa_entry");
   const [scannerFeedback, setScannerFeedback] = useState<"success" | "attention" | "error">("success");
+  const [themeMode, setThemeMode] = useState<ThemeMode>("dark");
 
   const [loginForm, setLoginForm] = useState<LoginFormState>({
     email: "centrocirurgico@simplesurgery.com.br",
@@ -215,6 +219,20 @@ export function DashboardApp() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLoginAttempted]);
+
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (storedTheme === "light" || storedTheme === "dark") {
+      setThemeMode(storedTheme);
+    }
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    root.classList.add(themeMode);
+    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+  }, [themeMode]);
 
   async function autoLoginWithDefaultCredentials() {
     setIsBootstrapping(true);
@@ -344,6 +362,8 @@ export function DashboardApp() {
       ? selectedRoomName
     : activeSection === "timeline"
       ? "Timeline do Paciente"
+      : activeSection === "settings"
+        ? "Configurações"
       : "Dashboard";
 
   const sectionSubtitle = activeSection === "scanner"
@@ -352,6 +372,8 @@ export function DashboardApp() {
       ? "Painel detalhado da sala com status atual, paciente e cronologia operacional."
     : activeSection === "timeline"
       ? "Rastreamento completo do fluxo cirúrgico com sequência de eventos e tempos operacionais."
+      : activeSection === "settings"
+        ? "Personalize aparência e preferências visuais mantendo a mesma identidade cromática da plataforma."
       : "Centro Cirúrgico - visão operacional do dia com salas, fila e eventos em tempo real.";
 
   const sectionBadge = activeSection === "scanner"
@@ -360,7 +382,13 @@ export function DashboardApp() {
       ? "Rastreabilidade cirúrgica"
       : activeSection === "rooms"
         ? "Operacao por sala"
+      : activeSection === "settings"
+        ? "Preferências"
         : "Visão geral";
+
+  function handleThemeChange(nextTheme: ThemeMode) {
+    setThemeMode(nextTheme);
+  }
 
   async function hydrateAll(accessToken: string, fallbackUser?: AuthUser) {
     setIsBootstrapping(true);
@@ -1379,7 +1407,95 @@ POST /api/v1/events
           </section>
         ) : null}
 
-        {activeSection !== "dashboard" && activeSection !== "scanner" && activeSection !== "timeline" && activeSection !== "rooms" ? (
+        {activeSection === "settings" ? (
+          <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="ss-panel p-6">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-semibold">Tema da interface</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Escolha entre Dark e Light mantendo a mesma paleta da marca.
+                  </p>
+                </div>
+                <Settings className="h-5 w-5 text-primary" />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <article className={themeMode === "dark"
+                  ? "rounded-2xl border border-primary/45 bg-background/60 p-4 ring-2 ring-primary/25"
+                  : "rounded-2xl border border-border bg-background/60 p-4"}
+                >
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Dark</p>
+                  <p className="mt-2 text-lg font-semibold">Padrão operacional</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Contraste alto para ambientes críticos.</p>
+                  <div className="mt-4 flex gap-2">
+                    <span className="h-6 w-6 rounded-full border border-border bg-[oklch(0.16_0.013_85)]" />
+                    <span className="h-6 w-6 rounded-full border border-border bg-[oklch(0.72_0.11_108)]" />
+                    <span className="h-6 w-6 rounded-full border border-border bg-[oklch(0.72_0.11_70)]" />
+                  </div>
+                  <Button
+                    className="mt-4 w-full"
+                    onClick={() => handleThemeChange("dark")}
+                    type="button"
+                    variant={themeMode === "dark" ? "default" : "outline"}
+                  >
+                    Usar Dark
+                  </Button>
+                </article>
+
+                <article className={themeMode === "light"
+                  ? "rounded-2xl border border-primary/45 bg-background/60 p-4 ring-2 ring-primary/25"
+                  : "rounded-2xl border border-border bg-background/60 p-4"}
+                >
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Light</p>
+                  <p className="mt-2 text-lg font-semibold">Clara com a mesma paleta</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Leitura leve para análise e gestão.</p>
+                  <div className="mt-4 flex gap-2">
+                    <span className="h-6 w-6 rounded-full border border-border bg-[oklch(0.97_0.012_95)]" />
+                    <span className="h-6 w-6 rounded-full border border-border bg-[oklch(0.65_0.1_108)]" />
+                    <span className="h-6 w-6 rounded-full border border-border bg-[oklch(0.66_0.1_70)]" />
+                  </div>
+                  <Button
+                    className="mt-4 w-full"
+                    onClick={() => handleThemeChange("light")}
+                    type="button"
+                    variant={themeMode === "light" ? "default" : "outline"}
+                  >
+                    Usar Light
+                  </Button>
+                </article>
+              </div>
+            </div>
+
+            <aside className="space-y-6">
+              <section className="ss-panel p-5">
+                <h3 className="text-lg font-semibold">Tema ativo</h3>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Atual: <strong className="text-foreground">{themeMode === "dark" ? "Dark" : "Light"}</strong>
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  A preferência é salva automaticamente para os próximos acessos.
+                </p>
+              </section>
+
+              <section className="ss-panel p-5">
+                <h3 className="text-lg font-semibold">Paleta compartilhada</h3>
+                <div className="mt-4 grid grid-cols-5 gap-2">
+                  <span className="h-8 rounded-lg border border-border bg-primary/80" />
+                  <span className="h-8 rounded-lg border border-border bg-accent/80" />
+                  <span className="h-8 rounded-lg border border-border bg-secondary" />
+                  <span className="h-8 rounded-lg border border-border bg-muted" />
+                  <span className="h-8 rounded-lg border border-border bg-background" />
+                </div>
+                <p className="mt-3 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  Mesmos matizes, luminosidade ajustada por tema
+                </p>
+              </section>
+            </aside>
+          </section>
+        ) : null}
+
+        {activeSection !== "dashboard" && activeSection !== "scanner" && activeSection !== "timeline" && activeSection !== "rooms" && activeSection !== "settings" ? (
           <section className="ss-panel p-8">
             <h2 className="text-2xl font-semibold">Ambiente em preparação</h2>
             <p className="mt-2 text-sm text-muted-foreground">
