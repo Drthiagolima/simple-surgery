@@ -1593,10 +1593,10 @@ function ScannerStatusCard({
   tone: "success" | "warning" | "error";
 }) {
   const toneClass = tone === "success"
-    ? "border-lime-300/35 bg-lime-300/10 text-lime-100"
+    ? "border-lime-400/45 bg-lime-300/18 text-foreground"
     : tone === "warning"
-      ? "border-amber-300/35 bg-amber-300/10 text-amber-100"
-      : "border-rose-300/35 bg-rose-300/10 text-rose-100";
+      ? "border-amber-400/45 bg-amber-300/18 text-foreground"
+      : "border-rose-400/45 bg-rose-300/18 text-foreground";
 
   return (
     <div className={`rounded-2xl border p-4 transition ${toneClass} ${active ? "ring-2 ring-primary/30" : "opacity-85"}`}>
