@@ -122,11 +122,22 @@ function resolveApiBaseUrl(): string {
     return configured;
   }
 
-  if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+  // On browser, prefer localhost only for local development access.
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "http://localhost:8010/api/v1";
+    }
+
     return "https://api.simplesurgery.com.br/api/v1";
   }
 
-  return "http://localhost:8010/api/v1";
+  // During SSR/build, avoid baking localhost into production bundles.
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:8010/api/v1";
+  }
+
+  return "https://api.simplesurgery.com.br/api/v1";
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();
