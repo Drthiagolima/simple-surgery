@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: simple-surgery-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: simple_surgery
+    ports:
+      - "5434:5432"
+    volumes:
+      - simple_surgery_pgdata:/var/lib/postgresql/data
+
+volumes:
+  simple_surgery_pgdata:

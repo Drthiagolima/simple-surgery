@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: simple-surgery-api
+    runtime: python
+    rootDir: backend
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: APP_NAME
+        value: SIMPLE SURGERY API
+      - key: APP_ENV
+        value: production
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 60
+      - key: FRONTEND_ORIGIN
+        value: https://www.simplesurgery.com.br
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+
+databases:
+  - name: simple-surgery-db
+    plan: starter
+    databaseName: simple_surgery
+    user: simple_surgery
