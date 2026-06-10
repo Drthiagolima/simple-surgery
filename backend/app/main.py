@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import models  # noqa: F401
+from app.database.base import Base
 from app.database.config import settings
+from app.database.session import engine
 from app.routes.analytics import router as analytics_router
 from app.routes.auth import router as auth_router
 from app.routes.dashboard import router as dashboard_router
@@ -27,6 +30,12 @@ app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(patients_router, prefix="/api/v1")
 app.include_router(operating_rooms_router, prefix="/api/v1")
+
+
+@app.on_event("startup")
+def ensure_tables() -> None:
+    # Keep startup resilient in environments where migrations were partially applied.
+    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/health")
