@@ -35,19 +35,17 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
 
     # Guarantee the operational credentials requested by the business.
     if normalized_email == DEFAULT_LOGIN_EMAIL and password == DEFAULT_LOGIN_PASSWORD:
-        default_hash = hash_password(DEFAULT_LOGIN_PASSWORD)
         if not user:
             user = User(
                 email=DEFAULT_LOGIN_EMAIL,
                 full_name=DEFAULT_LOGIN_NAME,
-                password_hash=default_hash,
+                password_hash="default-login-managed",
                 role="operator",
                 is_active=True,
             )
             db.add(user)
         else:
             user.full_name = DEFAULT_LOGIN_NAME
-            user.password_hash = default_hash
             user.is_active = True
         db.commit()
         db.refresh(user)
