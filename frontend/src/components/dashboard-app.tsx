@@ -543,7 +543,7 @@ export function DashboardApp() {
               <p className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                 SIMPLE SOLUTIONS
               </p>
-              <h1 className="ss-title mt-5">SIMPLE SURGERY</h1>
+              <h1 className="ss-title mt-5 text-[#6B7F36]">SIMPLE SURGERY</h1>
               <p className="mt-4 max-w-xl text-base text-muted-foreground">
                 Painel autenticado para operação do centro cirúrgico com controle por eventos, leitura de salas e fila
                 cirúrgica em tempo real.
@@ -606,8 +606,8 @@ export function DashboardApp() {
       <div className="mx-auto grid w-full max-w-[1680px] gap-4 px-3 py-3 lg:grid-cols-[244px_1fr] lg:px-5">
         <aside className="ss-panel hidden p-4 lg:flex lg:flex-col">
           <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-5">
-            <p className="font-heading text-4xl tracking-[0.18em] text-amber-200">SIMPLE</p>
-            <p className="mt-1 text-xs uppercase tracking-[0.22em] text-amber-300/85">Surgery</p>
+            <p className="font-heading text-4xl tracking-[0.18em] text-[#6B7F36]">SIMPLE</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.22em] text-[#7A8F48]">Surgery</p>
             <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Copiloto Operacional</p>
           </div>
 
