@@ -125,17 +125,17 @@ const scannerFeedbackDetails = {
   success: {
     title: "Sucesso operacional",
     subtitle: "Evento registrado com timestamp e auditoria completa.",
-    chipClass: "border-lime-300/35 bg-lime-300/15 text-lime-100",
+    chipClass: "border-lime-400/45 bg-lime-300/18 text-foreground",
   },
   attention: {
     title: "Atenção no fluxo",
     subtitle: "Evento fora da sequência padrão. Revisar antes de confirmar.",
-    chipClass: "border-amber-300/35 bg-amber-300/15 text-amber-100",
+    chipClass: "border-amber-400/45 bg-amber-300/18 text-foreground",
   },
   error: {
     title: "Erro de leitura",
     subtitle: "QR não reconhecido. Reposicione a câmera e tente novamente.",
-    chipClass: "border-rose-300/35 bg-rose-300/15 text-rose-100",
+    chipClass: "border-rose-400/45 bg-rose-300/18 text-foreground",
   },
 } as const;
 
@@ -619,7 +619,9 @@ export function DashboardApp() {
                 <button
                   key={item.label}
                   className={isActive
-                    ? "flex w-full items-center gap-3 rounded-xl border border-lime-300/30 bg-lime-300/20 px-3 py-2.5 text-sm font-semibold text-lime-100 shadow-[inset_0_0_0_1px_rgba(180,224,120,0.16)]"
+                    ? (themeMode === "light"
+                      ? "flex w-full items-center gap-3 rounded-xl border border-primary/40 bg-primary/15 px-3 py-2.5 text-sm font-semibold text-foreground shadow-[inset_0_0_0_1px_rgba(120,150,80,0.18)]"
+                      : "flex w-full items-center gap-3 rounded-xl border border-lime-300/30 bg-lime-300/20 px-3 py-2.5 text-sm font-semibold text-lime-100 shadow-[inset_0_0_0_1px_rgba(180,224,120,0.16)]")
                     : "flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm text-muted-foreground transition duration-200 hover:border-border hover:bg-background/70 hover:text-foreground"}
                   onClick={() => setActiveSection(item.key)}
                   type="button"
@@ -687,7 +689,9 @@ export function DashboardApp() {
               <button
                 key={`mobile-${item.key}`}
                 className={isActive
-                  ? "inline-flex shrink-0 items-center gap-2 rounded-xl border border-lime-300/30 bg-lime-300/20 px-3 py-2 text-xs font-semibold text-lime-100"
+                  ? (themeMode === "light"
+                    ? "inline-flex shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-primary/15 px-3 py-2 text-xs font-semibold text-foreground"
+                    : "inline-flex shrink-0 items-center gap-2 rounded-xl border border-lime-300/30 bg-lime-300/20 px-3 py-2 text-xs font-semibold text-lime-100")
                   : "inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-background/70 px-3 py-2 text-xs text-muted-foreground"}
                 onClick={() => setActiveSection(item.key)}
                 type="button"
@@ -714,12 +718,15 @@ export function DashboardApp() {
             {actionError ? <InfoBanner variant="error">{actionError}</InfoBanner> : null}
 
             {!payload.apiAvailable && !isBootstrapping ? (
-              <section className="mb-8 rounded-3xl border border-amber-300/40 bg-amber-300/10 p-5 text-amber-100 shadow-sm">
+              <section className={themeMode === "light"
+                ? "mb-8 rounded-3xl border border-amber-400/40 bg-amber-100/70 p-5 text-amber-950 shadow-sm"
+                : "mb-8 rounded-3xl border border-amber-300/40 bg-amber-300/10 p-5 text-amber-100 shadow-sm"}
+              >
                 <div className="flex items-start gap-3">
                   <CircleAlert className="mt-0.5 h-5 w-5" />
                   <div>
                     <p className="font-semibold">API autenticada ainda não respondeu com dados.</p>
-                    <p className="mt-1 text-sm text-amber-100/80">
+                    <p className={themeMode === "light" ? "mt-1 text-sm text-amber-900/80" : "mt-1 text-sm text-amber-100/80"}>
                       A sessão JWT foi aceita, mas o dashboard ainda não recebeu overview, salas ou cirurgias da API.
                     </p>
                   </div>
@@ -1061,12 +1068,12 @@ POST /api/v1/events
                 </div>
 
                 <div className={`mt-4 rounded-2xl border p-4 ${scannerFeedbackDetails[scannerFeedback].chipClass}`}>
-                  <p className="text-xs uppercase tracking-[0.18em] text-lime-100">Paciente identificado</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-foreground">Paciente identificado</p>
                   <div className="mt-2 flex flex-wrap items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full border border-lime-200/60 text-2xl font-semibold text-lime-100">M.S.</div>
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border text-2xl font-semibold text-foreground">M.S.</div>
                     <div>
-                      <p className="text-lg font-semibold text-lime-50">Maria de Souza</p>
-                      <p className="text-sm text-lime-100/80">Cirurgião: Dr. Thiago Lima | Sala 01</p>
+                      <p className="text-lg font-semibold text-foreground">Maria de Souza</p>
+                      <p className="text-sm text-muted-foreground">Cirurgião: Dr. Thiago Lima | Sala 01</p>
                     </div>
                   </div>
                 </div>
@@ -1080,7 +1087,7 @@ POST /api/v1/events
                         <button
                           key={option.key}
                           className={isActive
-                            ? "rounded-xl border border-amber-300/45 bg-amber-300/15 px-3 py-3 text-sm font-semibold text-amber-100"
+                            ? "rounded-xl border border-amber-400/45 bg-amber-300/20 px-3 py-3 text-sm font-semibold text-foreground"
                             : "rounded-xl border border-border bg-background/65 px-3 py-3 text-sm text-muted-foreground hover:border-border/90 hover:text-foreground"}
                           onClick={() => setScannerStep(option.key)}
                           type="button"
@@ -1225,8 +1232,8 @@ POST /api/v1/events
                             <h3 className="mt-1 text-base font-semibold">{translateEventType(entry.item.event_type)}</h3>
                           </div>
                           <span className={entry.isValid
-                            ? "rounded-full border border-lime-300/40 bg-lime-300/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-lime-100"
-                            : "rounded-full border border-amber-300/40 bg-amber-300/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-amber-100"}
+                            ? "rounded-full border border-lime-400/45 bg-lime-300/18 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-foreground"
+                            : "rounded-full border border-amber-400/45 bg-amber-300/18 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-foreground"}
                           >
                             {entry.isValid ? "Fluxo OK" : `Esperado: ${translateEventType(entry.expectedEvent)}`}
                           </span>
