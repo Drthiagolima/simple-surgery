@@ -219,7 +219,7 @@ async function postAuthorized<TResponse>(path: string, token: string, body: unkn
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || "Falha na operacao protegida.");
+    throw new Error(text || "Falha na operação protegida.");
   }
 
   return (await response.json()) as TResponse;
