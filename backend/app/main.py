@@ -17,7 +17,7 @@ app = FastAPI(title=settings.app_name)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=settings.frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,4 +40,14 @@ def ensure_tables() -> None:
 
 @app.get("/health")
 def health_check():
+    return {"status": "ok", "service": settings.app_name}
+
+
+@app.get("/api/health")
+def api_health_check():
+    return health_check()
+
+
+@app.get("/")
+def root():
     return {"status": "ok", "service": settings.app_name}

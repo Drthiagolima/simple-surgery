@@ -23,5 +23,13 @@ class Settings(BaseSettings):
             url = "postgresql+psycopg://" + url[len("postgresql://") :]
         return url
 
+    @property
+    def frontend_origins(self) -> list[str]:
+        raw = self.frontend_origin or ""
+        origins = [item.strip() for item in raw.split(",") if item.strip()]
+        if not origins:
+            origins = ["http://localhost:3010"]
+        return origins
+
 
 settings = Settings()
