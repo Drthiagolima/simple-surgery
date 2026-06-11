@@ -49,6 +49,7 @@ import {
   type SurgeryTimelineResponse,
   createOperationalEvent,
   createSurgery,
+  generateSurgicalDescription,
   getCurrentUser,
   getDashboardPayload,
   getIdleTimeAnalytics,
@@ -56,6 +57,7 @@ import {
   getPatients,
   getSurgeryTimeline,
   loginRequest,
+  validateNursingAudioResponse,
 } from "@/lib/api";
 
 const SESSION_STORAGE_KEY = "simple-surgery:auth-session";
@@ -274,6 +276,8 @@ export function DashboardApp() {
   const [nursingAgentActive, setNursingAgentActive] = useState(false);
   const [nursingQuestionIndex, setNursingQuestionIndex] = useState(0);
   const [nursingAnswers, setNursingAnswers] = useState<Record<string, string>>({});
+  const [isNursingValidating, setIsNursingValidating] = useState(false);
+  const [isGeneratingMedicalDraft, setIsGeneratingMedicalDraft] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
@@ -545,7 +549,7 @@ export function DashboardApp() {
     setDocumentActionMessage("Agente de enfermagem iniciado. Capture a resposta da pergunta atual por áudio.");
   }
 
-  function saveNursingAudioAnswer() {
+  async function saveNursingAudioAnswer() {
     if (!currentNursingQuestion) return;
     const answer = voiceTranscript.trim();
     if (!answer) {
@@ -553,11 +557,41 @@ export function DashboardApp() {
       return;
     }
 
-    const key = buildNursingAnswerKey(currentNursingQuestion.id);
-    setNursingAnswers((current) => ({ ...current, [key]: answer }));
-    setVoiceTranscript("");
-    setVoiceError(null);
-    setDocumentActionMessage("Resposta registrada no checklist de validação da enfermagem.");
+    try {
+      setIsNursingValidating(true);
+      const validation = await validateNursingAudioResponse({
+        paciente: {
+          nome: session?.user?.full_name || session?.user?.email || "Profissional de enfermagem",
+          perfil: "enfermagem",
+        },
+        instrucoes: currentNursingQuestion.prompt,
+        transcricao: answer,
+        anamnese: {
+          modelo: selectedTemplate?.title || "",
+          respostas_ja_coletadas: nursingAnswers,
+        },
+      });
+
+      const key = buildNursingAnswerKey(currentNursingQuestion.id);
+      const summarized = validation.data?.resumo_resposta?.trim();
+      const normalizedAnswer = summarized || answer;
+      setNursingAnswers((current) => ({ ...current, [key]: normalizedAnswer }));
+      setVoiceTranscript("");
+      setVoiceError(null);
+
+      const pendingList = validation.data?.pendencias?.filter(Boolean) ?? [];
+      const pendingText = pendingList.length ? ` Pendências: ${pendingList.join("; ")}.` : "";
+      const feedback = validation.data?.feedback?.trim() || "Resposta registrada no checklist de validação da enfermagem.";
+      setDocumentActionMessage(`${feedback}${pendingText}`);
+    } catch {
+      const key = buildNursingAnswerKey(currentNursingQuestion.id);
+      setNursingAnswers((current) => ({ ...current, [key]: answer }));
+      setVoiceTranscript("");
+      setVoiceError(null);
+      setDocumentActionMessage("Resposta registrada localmente. Não foi possível validar no assistente no momento.");
+    } finally {
+      setIsNursingValidating(false);
+    }
   }
 
   function nextNursingQuestion() {
@@ -630,6 +664,41 @@ export function DashboardApp() {
 
     setMedicalAudioName(file.name);
     setDocumentActionMessage("Áudio recebido. A transcrição cirúrgica será processada no fluxo do médico.");
+  }
+
+  async function runMedicalAssistantDraft() {
+    const transcript = voiceTranscript.trim();
+    if (!transcript) {
+      setVoiceError("Registre a transcrição cirúrgica por voz antes de gerar com o assistente.");
+      return;
+    }
+
+    try {
+      setIsGeneratingMedicalDraft(true);
+      setVoiceError(null);
+      const response = await generateSurgicalDescription({
+        paciente: {
+          nome: session?.user?.full_name || session?.user?.email || "Médico responsável",
+          perfil: "medico",
+        },
+        transcricao: transcript,
+        instrucoes: selectedTemplate
+          ? `Use o modelo ${selectedTemplate.title} como referência para estrutura do documento.`
+          : "Gerar descrição cirúrgica completa para prontuário.",
+      });
+
+      const generated = response.text?.trim() || response.outputs?.[0]?.trim();
+      if (!generated) {
+        throw new Error("Resposta vazia do assistente médico");
+      }
+
+      setVoiceTranscript(generated);
+      setDocumentActionMessage("Descrição cirúrgica gerada pelo assistente médico e pronta para revisão.");
+    } catch {
+      setDocumentActionMessage("Não foi possível gerar com o assistente médico agora. O rascunho manual foi preservado.");
+    } finally {
+      setIsGeneratingMedicalDraft(false);
+    }
   }
 
   useEffect(() => {
@@ -1737,12 +1806,16 @@ POST /api/v1/events
                   <div className="rounded-xl border border-border bg-background/70 p-3">
                     <p className="text-sm font-semibold">Assistente médico específico</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Estrutura pronta para integração com IA. Após você enviar a key e os códigos dos assistentes,
-                      este fluxo executará a geração automática da descrição cirúrgica.
+                      Fluxo conectado ao backend de agentes para geração automática da descrição cirúrgica.
                     </p>
                     <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
-                      <span className="rounded-lg border border-border bg-background px-2 py-1">OPENAI_API_KEY: aguardando</span>
-                      <span className="rounded-lg border border-border bg-background px-2 py-1">ASSISTANT_ID_MEDICO: aguardando</span>
+                      <span className="rounded-lg border border-border bg-background px-2 py-1">OPENAI_API_KEY: configurada no backend</span>
+                      <span className="rounded-lg border border-border bg-background px-2 py-1">ASSISTANT_ID_MEDICO: descrição cirúrgica ativo</span>
+                    </div>
+                    <div className="mt-3">
+                      <Button disabled={isGeneratingMedicalDraft} onClick={runMedicalAssistantDraft} type="button" variant="outline">
+                        {isGeneratingMedicalDraft ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Gerar descrição com assistente
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -1765,8 +1838,8 @@ POST /api/v1/events
                       <Button onClick={startNursingValidationAgent} type="button" variant="secondary">
                         Iniciar agente
                       </Button>
-                      <Button onClick={saveNursingAudioAnswer} type="button" variant="outline">
-                        Registrar resposta
+                      <Button disabled={isNursingValidating} onClick={saveNursingAudioAnswer} type="button" variant="outline">
+                        {isNursingValidating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null} Registrar resposta
                       </Button>
                       <Button onClick={nextNursingQuestion} type="button" variant="outline">
                         Próxima pergunta

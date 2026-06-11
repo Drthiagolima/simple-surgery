@@ -116,6 +116,28 @@ export type EventCreatePayload = {
   payload?: Record<string, unknown>;
 };
 
+export type AgentCallPayload = {
+  paciente?: Record<string, unknown>;
+  transcricao?: string;
+  anamnese?: Record<string, unknown> | string;
+  instrucoes?: string;
+};
+
+export type AgentCallResponse = {
+  ok: boolean;
+  agent: string;
+  text?: string;
+  data?: {
+    validado?: boolean;
+    feedback?: string;
+    resumo_resposta?: string;
+    pendencias?: string[];
+    proxima_pergunta_sugerida?: string;
+    _erro?: string;
+  };
+  outputs?: string[];
+};
+
 function resolveApiBaseUrl(): string {
   const configured = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
   if (configured) {
@@ -141,6 +163,24 @@ function resolveApiBaseUrl(): string {
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();
+
+function resolveAgentsApiBaseUrl(): string {
+  const configured = (process.env.NEXT_PUBLIC_AGENTS_API_BASE_URL || "").trim();
+  if (configured) {
+    return configured;
+  }
+
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "http://localhost:8787";
+    }
+  }
+
+  return "https://api.ortopguia.com.br";
+}
+
+export const AGENTS_API_BASE_URL = resolveAgentsApiBaseUrl();
 
 async function safeFetchJson<T>(path: string, token?: string): Promise<T | null> {
   try {
@@ -244,4 +284,30 @@ export async function getIdleTimeAnalytics(token: string, filters?: { roomId?: s
   const query = params.toString();
   const path = query ? `/analytics/idle-time?${query}` : "/analytics/idle-time";
   return safeFetchJson<IdleTimeResponse>(path, token);
+}
+
+async function callDocumentAgent(agentId: string, payload: AgentCallPayload): Promise<AgentCallResponse> {
+  const response = await fetch(`${AGENTS_API_BASE_URL}/api/agents/${agentId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Falha ao executar assistente de documentos.");
+  }
+
+  return (await response.json()) as AgentCallResponse;
+}
+
+export async function validateNursingAudioResponse(payload: AgentCallPayload): Promise<AgentCallResponse> {
+  return callDocumentAgent("enfermagem_validacao", payload);
+}
+
+export async function generateSurgicalDescription(payload: AgentCallPayload): Promise<AgentCallResponse> {
+  return callDocumentAgent("descricao_cirurgica", payload);
 }
