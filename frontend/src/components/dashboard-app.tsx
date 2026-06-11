@@ -107,6 +107,11 @@ type DocumentTemplate = {
   seedText: string;
 };
 
+type NursingQuestion = {
+  id: string;
+  prompt: string;
+};
+
 type SpeechRecognitionLike = {
   lang: string;
   continuous: boolean;
@@ -217,6 +222,21 @@ const documentTemplates: DocumentTemplate[] = [
   },
 ];
 
+const nursingValidationQuestionnaire: Record<string, NursingQuestion[]> = {
+  "checklist-timeout": [
+    { id: "patient-check", prompt: "Confirme identificação correta do paciente (nome completo e prontuário)." },
+    { id: "procedure-check", prompt: "Procedimento, lateralidade e sítio cirúrgico foram confirmados com a equipe?" },
+    { id: "allergy-check", prompt: "Há alergias, risco de sangramento ou eventos críticos comunicados?" },
+    { id: "material-check", prompt: "Materiais, instrumentais e OPME necessários estão disponíveis e conferidos?" },
+  ],
+  "comunic-ativa": [
+    { id: "situacao", prompt: "Descreva a situação atual do paciente no momento da comunicação." },
+    { id: "intervencoes", prompt: "Quais intervenções de enfermagem foram realizadas?" },
+    { id: "resposta", prompt: "Qual foi a resposta clínica do paciente após as intervenções?" },
+    { id: "plano", prompt: "Informe o plano de continuidade e pontos para passagem de plantão." },
+  ],
+};
+
 export function DashboardApp() {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [activeSection, setActiveSection] = useState<NavSection>("dashboard");
@@ -251,6 +271,9 @@ export function DashboardApp() {
   const [medicalAudioName, setMedicalAudioName] = useState<string>("");
   const [documentActionMessage, setDocumentActionMessage] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("descr-cirurgia");
+  const [nursingAgentActive, setNursingAgentActive] = useState(false);
+  const [nursingQuestionIndex, setNursingQuestionIndex] = useState(0);
+  const [nursingAnswers, setNursingAnswers] = useState<Record<string, string>>({});
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
@@ -417,6 +440,18 @@ export function DashboardApp() {
     [profileTemplates, selectedTemplateId],
   );
 
+  const nursingQuestions = useMemo(() => {
+    if (!selectedTemplate || documentProfile !== "nursing") return [];
+    return nursingValidationQuestionnaire[selectedTemplate.id] ?? [];
+  }, [selectedTemplate, documentProfile]);
+
+  const currentNursingQuestion = nursingQuestions[nursingQuestionIndex] ?? null;
+
+  const nursingAnsweredCount = useMemo(() => {
+    if (!selectedTemplate) return 0;
+    return Object.keys(nursingAnswers).filter((key) => key.startsWith(`${selectedTemplate.id}:`)).length;
+  }, [nursingAnswers, selectedTemplate]);
+
   const timelineSurgery = timelineData?.surgery ?? payload.surgeries.find((item) => item.id === selectedTimelineSurgeryId) ?? null;
   const timelinePatient = patients.find((item) => item.id === timelineSurgery?.patient_id) ?? null;
 
@@ -491,6 +526,57 @@ export function DashboardApp() {
     setDocumentActionMessage(`Modelo ${nextTemplate.title} aplicado no rascunho.`);
   }
 
+  function buildNursingAnswerKey(questionId: string): string {
+    if (!selectedTemplate) return questionId;
+    return `${selectedTemplate.id}:${questionId}`;
+  }
+
+  function startNursingValidationAgent() {
+    if (documentProfile !== "nursing") return;
+    if (!nursingQuestions.length) {
+      setDocumentActionMessage("Este modelo ainda não possui questionário de validação por áudio.");
+      return;
+    }
+
+    setNursingAgentActive(true);
+    setNursingQuestionIndex(0);
+    setNursingAnswers({});
+    setVoiceTranscript("");
+    setDocumentActionMessage("Agente de enfermagem iniciado. Capture a resposta da pergunta atual por áudio.");
+  }
+
+  function saveNursingAudioAnswer() {
+    if (!currentNursingQuestion) return;
+    const answer = voiceTranscript.trim();
+    if (!answer) {
+      setVoiceError("Grave ou digite uma resposta antes de registrar a pergunta atual.");
+      return;
+    }
+
+    const key = buildNursingAnswerKey(currentNursingQuestion.id);
+    setNursingAnswers((current) => ({ ...current, [key]: answer }));
+    setVoiceTranscript("");
+    setVoiceError(null);
+    setDocumentActionMessage("Resposta registrada no checklist de validação da enfermagem.");
+  }
+
+  function nextNursingQuestion() {
+    if (!currentNursingQuestion) return;
+    const key = buildNursingAnswerKey(currentNursingQuestion.id);
+    if (!nursingAnswers[key]) {
+      setDocumentActionMessage("Registre a resposta da pergunta atual antes de avançar.");
+      return;
+    }
+
+    if (nursingQuestionIndex >= nursingQuestions.length - 1) {
+      setNursingAgentActive(false);
+      setDocumentActionMessage("Questionário de enfermagem concluído e validado por áudio.");
+      return;
+    }
+
+    setNursingQuestionIndex((current) => current + 1);
+  }
+
   function startVoiceCapture() {
     setVoiceError(null);
     setDocumentActionMessage(null);
@@ -559,6 +645,12 @@ export function DashboardApp() {
     if (!nextTemplate) return;
     setSelectedTemplateId(nextTemplate.id);
   }, [documentProfile]);
+
+  useEffect(() => {
+    setNursingAgentActive(false);
+    setNursingQuestionIndex(0);
+    setNursingAnswers({});
+  }, [documentProfile, selectedTemplateId]);
 
   async function hydrateAll(accessToken: string, fallbackUser?: AuthUser) {
     setIsBootstrapping(true);
@@ -1641,13 +1733,49 @@ POST /api/v1/events
                   {medicalAudioName ? (
                     <p className="text-sm text-muted-foreground">Arquivo selecionado: <strong className="text-foreground">{medicalAudioName}</strong></p>
                   ) : null}
+
+                  <div className="rounded-xl border border-border bg-background/70 p-3">
+                    <p className="text-sm font-semibold">Assistente médico específico</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Estrutura pronta para integração com IA. Após você enviar a key e os códigos dos assistentes,
+                      este fluxo executará a geração automática da descrição cirúrgica.
+                    </p>
+                    <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
+                      <span className="rounded-lg border border-border bg-background px-2 py-1">OPENAI_API_KEY: aguardando</span>
+                      <span className="rounded-lg border border-border bg-background px-2 py-1">ASSISTANT_ID_MEDICO: aguardando</span>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4 rounded-2xl border border-border bg-background/60 p-4">
-                  <h3 className="text-lg font-semibold">Enfermagem: documentos por voz</h3>
+                  <h3 className="text-lg font-semibold">Enfermagem: validação por áudio</h3>
                   <p className="text-sm text-muted-foreground">
-                    Use o ditado para registrar evolução de enfermagem, checklist perioperatório e observações do plantão.
+                    O agente conduz as perguntas do questionário e a enfermagem responde por áudio em cada etapa.
                   </p>
+
+                  <div className="rounded-xl border border-border bg-background/70 p-3">
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Agente de perguntas</p>
+                    <p className="mt-2 text-sm font-semibold">
+                      {currentNursingQuestion ? currentNursingQuestion.prompt : "Selecione um modelo com questionário de validação."}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Progresso: {nursingAnsweredCount}/{nursingQuestions.length} respostas registradas
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button onClick={startNursingValidationAgent} type="button" variant="secondary">
+                        Iniciar agente
+                      </Button>
+                      <Button onClick={saveNursingAudioAnswer} type="button" variant="outline">
+                        Registrar resposta
+                      </Button>
+                      <Button onClick={nextNursingQuestion} type="button" variant="outline">
+                        Próxima pergunta
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {nursingAgentActive ? "Agente ativo" : "Agente aguardando início"}
+                    </p>
+                  </div>
                 </div>
               )}
 
