@@ -99,6 +99,14 @@ type EventFormState = {
 type ThemeMode = "dark" | "light";
 type DocumentProfile = "medical" | "nursing";
 
+type DocumentTemplate = {
+  id: string;
+  profile: DocumentProfile;
+  title: string;
+  fileUrl: string;
+  seedText: string;
+};
+
 type SpeechRecognitionLike = {
   lang: string;
   continuous: boolean;
@@ -171,6 +179,44 @@ const dashboardNav: { key: NavSection; label: string; icon: LucideIcon }[] = [
   { key: "settings", label: "Configurações", icon: Settings },
 ];
 
+const documentTemplates: DocumentTemplate[] = [
+  {
+    id: "descr-cirurgia",
+    profile: "medical",
+    title: "Descrição Cirúrgica",
+    fileUrl: "/templates/descricao-cirurgica.pdf",
+    seedText: "Descrição cirúrgica:\nProcedimento realizado:\nAchados intraoperatórios:\nConduta e recomendações:",
+  },
+  {
+    id: "transop",
+    profile: "medical",
+    title: "TransOP",
+    fileUrl: "/templates/transop.pdf",
+    seedText: "Transoperatório médico:\nInício:\nTécnica aplicada:\nIntercorrências:\nEncerramento:",
+  },
+  {
+    id: "transop-copia",
+    profile: "medical",
+    title: "TransOP (Cópia)",
+    fileUrl: "/templates/transop-copia.pdf",
+    seedText: "Transoperatório (cópia):\nResumo da cirurgia:\nEvolução intraoperatória:\nPlano:",
+  },
+  {
+    id: "checklist-timeout",
+    profile: "nursing",
+    title: "Checklist TIMEOUT",
+    fileUrl: "/templates/checklist-timeout.pdf",
+    seedText: "Checklist TIMEOUT:\nIdentificação do paciente:\nProcedimento confirmado:\nEquipe e materiais confirmados:\nObservações:",
+  },
+  {
+    id: "comunic-ativa",
+    profile: "nursing",
+    title: "ComunicAtiva",
+    fileUrl: "/templates/comunic-ativa.pdf",
+    seedText: "Comunicação ativa de enfermagem:\nSituação:\nIntervenções:\nResposta do paciente:\nPassagem de plantão:",
+  },
+];
+
 export function DashboardApp() {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [activeSection, setActiveSection] = useState<NavSection>("dashboard");
@@ -204,6 +250,7 @@ export function DashboardApp() {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [medicalAudioName, setMedicalAudioName] = useState<string>("");
   const [documentActionMessage, setDocumentActionMessage] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("descr-cirurgia");
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
@@ -360,6 +407,16 @@ export function DashboardApp() {
     [timelineData?.timeline],
   );
 
+  const profileTemplates = useMemo(
+    () => documentTemplates.filter((template) => template.profile === documentProfile),
+    [documentProfile],
+  );
+
+  const selectedTemplate = useMemo(
+    () => profileTemplates.find((template) => template.id === selectedTemplateId) ?? profileTemplates[0] ?? null,
+    [profileTemplates, selectedTemplateId],
+  );
+
   const timelineSurgery = timelineData?.surgery ?? payload.surgeries.find((item) => item.id === selectedTimelineSurgeryId) ?? null;
   const timelinePatient = patients.find((item) => item.id === timelineSurgery?.patient_id) ?? null;
 
@@ -425,6 +482,15 @@ export function DashboardApp() {
     setThemeMode(nextTheme);
   }
 
+  function handleTemplateChange(templateId: string) {
+    setSelectedTemplateId(templateId);
+    const nextTemplate = documentTemplates.find((template) => template.id === templateId);
+    if (!nextTemplate) return;
+
+    setVoiceTranscript(nextTemplate.seedText);
+    setDocumentActionMessage(`Modelo ${nextTemplate.title} aplicado no rascunho.`);
+  }
+
   function startVoiceCapture() {
     setVoiceError(null);
     setDocumentActionMessage(null);
@@ -487,6 +553,12 @@ export function DashboardApp() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const nextTemplate = documentTemplates.find((template) => template.profile === documentProfile);
+    if (!nextTemplate) return;
+    setSelectedTemplateId(nextTemplate.id);
+  }, [documentProfile]);
 
   async function hydrateAll(accessToken: string, fallbackUser?: AuthUser) {
     setIsBootstrapping(true);
@@ -1580,6 +1652,25 @@ POST /api/v1/events
               )}
 
               <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4">
+                <div className="mb-3">
+                  <FieldLabel htmlFor="document_template">Modelo do documento</FieldLabel>
+                  <select
+                    id="document_template"
+                    className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                    onChange={(event) => handleTemplateChange(event.target.value)}
+                    value={selectedTemplate?.id ?? ""}
+                  >
+                    {profileTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>{template.title}</option>
+                    ))}
+                  </select>
+                  {selectedTemplate ? (
+                    <a className="mt-2 inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline" href={selectedTemplate.fileUrl} rel="noreferrer" target="_blank">
+                      Abrir PDF de referência: {selectedTemplate.title}
+                    </a>
+                  ) : null}
+                </div>
+
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <Button onClick={startVoiceCapture} type="button" variant="secondary">
                     <Mic className="h-4 w-4" /> Iniciar voz
@@ -1629,19 +1720,18 @@ POST /api/v1/events
               <section className="ss-panel p-5">
                 <h3 className="text-lg font-semibold">Modelos sugeridos</h3>
                 <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                  {documentProfile === "medical" ? (
-                    <>
-                      <div className="rounded-xl border border-border bg-background/65 p-3">Descrição cirúrgica</div>
-                      <div className="rounded-xl border border-border bg-background/65 p-3">Evolução médica pós-operatória</div>
-                      <div className="rounded-xl border border-border bg-background/65 p-3">Sumário de alta cirúrgica</div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="rounded-xl border border-border bg-background/65 p-3">Evolução de enfermagem</div>
-                      <div className="rounded-xl border border-border bg-background/65 p-3">Checklist perioperatório</div>
-                      <div className="rounded-xl border border-border bg-background/65 p-3">Passagem de plantão</div>
-                    </>
-                  )}
+                  {profileTemplates.map((template) => (
+                    <button
+                      className={selectedTemplate?.id === template.id
+                        ? "w-full rounded-xl border border-primary/45 bg-primary/10 p-3 text-left font-medium text-foreground"
+                        : "w-full rounded-xl border border-border bg-background/65 p-3 text-left"}
+                      key={template.id}
+                      onClick={() => handleTemplateChange(template.id)}
+                      type="button"
+                    >
+                      {template.title}
+                    </button>
+                  ))}
                 </div>
               </section>
             </aside>
