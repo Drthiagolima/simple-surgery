@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import type { FormEvent, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   Activity,
@@ -21,6 +21,8 @@ import {
   House,
   LucideDot,
   LoaderCircle,
+  Mic,
+  MicOff,
   Plus,
   QrCode,
   Route,
@@ -95,6 +97,25 @@ type EventFormState = {
 };
 
 type ThemeMode = "dark" | "light";
+type DocumentProfile = "medical" | "nursing";
+
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: any) => void) | null;
+  onerror: ((event: any) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+  }
+}
 
 const emptyPayload: DashboardPayload = {
   overview: null,
@@ -177,6 +198,14 @@ export function DashboardApp() {
   const [scannerStep, setScannerStep] = useState<string>("rpa_entry");
   const [scannerFeedback, setScannerFeedback] = useState<"success" | "attention" | "error">("success");
   const [themeMode, setThemeMode] = useState<ThemeMode>("dark");
+  const [documentProfile, setDocumentProfile] = useState<DocumentProfile>("medical");
+  const [isVoiceCapturing, setIsVoiceCapturing] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [medicalAudioName, setMedicalAudioName] = useState<string>("");
+  const [documentActionMessage, setDocumentActionMessage] = useState<string | null>(null);
+
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const [loginForm, setLoginForm] = useState<LoginFormState>({
     email: "centrocirurgico@simplesurgery.com.br",
@@ -362,6 +391,8 @@ export function DashboardApp() {
       ? selectedRoomName
     : activeSection === "timeline"
       ? "Timeline do Paciente"
+      : activeSection === "documents"
+        ? "Documentos Assistenciais"
       : activeSection === "settings"
         ? "Configurações"
       : "Dashboard";
@@ -372,6 +403,8 @@ export function DashboardApp() {
       ? "Painel detalhado da sala com status atual, paciente e cronologia operacional."
     : activeSection === "timeline"
       ? "Rastreamento completo do fluxo cirúrgico com sequência de eventos e tempos operacionais."
+      : activeSection === "documents"
+        ? "Produção de documentos médicos e de enfermagem por fluxo de voz, com foco em agilidade assistencial."
       : activeSection === "settings"
         ? "Personalize aparência e preferências visuais mantendo a mesma identidade cromática da plataforma."
       : "Centro Cirúrgico - visão operacional do dia com salas, fila e eventos em tempo real.";
@@ -382,6 +415,8 @@ export function DashboardApp() {
       ? "Rastreabilidade cirúrgica"
       : activeSection === "rooms"
         ? "Operacao por sala"
+      : activeSection === "documents"
+        ? "Voz clínica"
       : activeSection === "settings"
         ? "Preferências"
         : "Visão geral";
@@ -389,6 +424,69 @@ export function DashboardApp() {
   function handleThemeChange(nextTheme: ThemeMode) {
     setThemeMode(nextTheme);
   }
+
+  function startVoiceCapture() {
+    setVoiceError(null);
+    setDocumentActionMessage(null);
+
+    const SpeechCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!SpeechCtor) {
+      setVoiceError("Ditado por voz indisponível neste navegador. Use Chrome/Edge atualizado.");
+      return;
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+
+    const recognition = new SpeechCtor() as SpeechRecognitionLike;
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let index = 0; index < event.results.length; index += 1) {
+        transcript += event.results[index][0].transcript;
+      }
+      setVoiceTranscript(transcript.trim());
+    };
+    recognition.onerror = () => {
+      setVoiceError("Não foi possível capturar o áudio. Verifique a permissão de microfone.");
+      setIsVoiceCapturing(false);
+    };
+    recognition.onend = () => {
+      setIsVoiceCapturing(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsVoiceCapturing(true);
+  }
+
+  function stopVoiceCapture() {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsVoiceCapturing(false);
+  }
+
+  function handleMedicalAudioSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setMedicalAudioName(file.name);
+    setDocumentActionMessage("Áudio recebido. A transcrição cirúrgica será processada no fluxo do médico.");
+  }
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   async function hydrateAll(accessToken: string, fallbackUser?: AuthUser) {
     setIsBootstrapping(true);
@@ -1414,6 +1512,142 @@ POST /api/v1/events
           </section>
         ) : null}
 
+        {activeSection === "documents" ? (
+          <section className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+            <div className="ss-panel p-6">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-semibold">Central de documentos por voz</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Selecione o perfil do profissional para gerar documentos com ditado de voz.
+                  </p>
+                </div>
+                <span className="ss-chip">Fluxo assistencial</span>
+              </div>
+
+              <div className="mb-6 grid gap-3 sm:grid-cols-2">
+                <button
+                  className={documentProfile === "medical"
+                    ? "rounded-2xl border border-primary/45 bg-primary/10 p-4 text-left ring-2 ring-primary/25"
+                    : "rounded-2xl border border-border bg-background/60 p-4 text-left"}
+                  onClick={() => setDocumentProfile("medical")}
+                  type="button"
+                >
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Documentos Médicos</p>
+                  <p className="mt-2 text-lg font-semibold">Transcrição cirúrgica por áudio</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Registro da cirurgia, descrição técnica e conduta.</p>
+                </button>
+
+                <button
+                  className={documentProfile === "nursing"
+                    ? "rounded-2xl border border-primary/45 bg-primary/10 p-4 text-left ring-2 ring-primary/25"
+                    : "rounded-2xl border border-border bg-background/60 p-4 text-left"}
+                  onClick={() => setDocumentProfile("nursing")}
+                  type="button"
+                >
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Documentos Enfermagem</p>
+                  <p className="mt-2 text-lg font-semibold">Evolução e checagens assistenciais</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Checklist, intercorrências e passagem de plantão.</p>
+                </button>
+              </div>
+
+              {documentProfile === "medical" ? (
+                <div className="space-y-4 rounded-2xl border border-border bg-background/60 p-4">
+                  <h3 className="text-lg font-semibold">Médico: transcrever cirurgia por áudio</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Envie um áudio da cirurgia e/ou use ditado ao vivo para compor o documento médico.
+                  </p>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium">Áudio da cirurgia</span>
+                    <input
+                      accept="audio/*"
+                      className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                      onChange={handleMedicalAudioSelect}
+                      type="file"
+                    />
+                  </label>
+                  {medicalAudioName ? (
+                    <p className="text-sm text-muted-foreground">Arquivo selecionado: <strong className="text-foreground">{medicalAudioName}</strong></p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="space-y-4 rounded-2xl border border-border bg-background/60 p-4">
+                  <h3 className="text-lg font-semibold">Enfermagem: documentos por voz</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Use o ditado para registrar evolução de enfermagem, checklist perioperatório e observações do plantão.
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <Button onClick={startVoiceCapture} type="button" variant="secondary">
+                    <Mic className="h-4 w-4" /> Iniciar voz
+                  </Button>
+                  <Button onClick={stopVoiceCapture} type="button" variant="outline">
+                    <MicOff className="h-4 w-4" /> Parar voz
+                  </Button>
+                  <span className={isVoiceCapturing ? "rounded-full border border-lime-400/45 bg-lime-300/18 px-3 py-1 text-xs font-semibold text-foreground" : "rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground"}>
+                    {isVoiceCapturing ? "Captando áudio" : "Aguardando gravação"}
+                  </span>
+                </div>
+                {voiceError ? (
+                  <p className="mb-3 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{voiceError}</p>
+                ) : null}
+                {documentActionMessage ? (
+                  <p className="mb-3 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-foreground">{documentActionMessage}</p>
+                ) : null}
+                <FieldLabel htmlFor="voice_transcript">Transcrição por voz</FieldLabel>
+                <textarea
+                  id="voice_transcript"
+                  className="min-h-[220px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  onChange={(event) => setVoiceTranscript(event.target.value)}
+                  placeholder={documentProfile === "medical"
+                    ? "Ex.: Iniciada laparotomia mediana, sem intercorrências, hemostasia revisada..."
+                    : "Ex.: Paciente monitorizado, checklist conferido, sinais vitais estáveis..."}
+                  value={voiceTranscript}
+                />
+                <div className="mt-3 flex gap-2">
+                  <Button onClick={() => setDocumentActionMessage("Documento pronto para revisão e assinatura do profissional.")} type="button">
+                    Salvar rascunho
+                  </Button>
+                  <Button onClick={() => setVoiceTranscript("")} type="button" variant="outline">
+                    Limpar texto
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <aside className="space-y-6">
+              <section className="ss-panel p-5">
+                <h3 className="text-lg font-semibold">Perfil ativo</h3>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {documentProfile === "medical" ? "Documentos Médicos" : "Documentos Enfermagem"}
+                </p>
+              </section>
+
+              <section className="ss-panel p-5">
+                <h3 className="text-lg font-semibold">Modelos sugeridos</h3>
+                <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+                  {documentProfile === "medical" ? (
+                    <>
+                      <div className="rounded-xl border border-border bg-background/65 p-3">Descrição cirúrgica</div>
+                      <div className="rounded-xl border border-border bg-background/65 p-3">Evolução médica pós-operatória</div>
+                      <div className="rounded-xl border border-border bg-background/65 p-3">Sumário de alta cirúrgica</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="rounded-xl border border-border bg-background/65 p-3">Evolução de enfermagem</div>
+                      <div className="rounded-xl border border-border bg-background/65 p-3">Checklist perioperatório</div>
+                      <div className="rounded-xl border border-border bg-background/65 p-3">Passagem de plantão</div>
+                    </>
+                  )}
+                </div>
+              </section>
+            </aside>
+          </section>
+        ) : null}
+
         {activeSection === "settings" ? (
           <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="ss-panel p-6">
@@ -1502,7 +1736,7 @@ POST /api/v1/events
           </section>
         ) : null}
 
-        {activeSection !== "dashboard" && activeSection !== "scanner" && activeSection !== "timeline" && activeSection !== "rooms" && activeSection !== "settings" ? (
+        {activeSection !== "dashboard" && activeSection !== "scanner" && activeSection !== "timeline" && activeSection !== "rooms" && activeSection !== "documents" && activeSection !== "settings" ? (
           <section className="ss-panel p-8">
             <h2 className="text-2xl font-semibold">Ambiente em preparação</h2>
             <p className="mt-2 text-sm text-muted-foreground">
