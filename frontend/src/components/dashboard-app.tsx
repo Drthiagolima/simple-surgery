@@ -23,7 +23,6 @@ import {
   Mic,
   MicOff,
   Plus,
-  QrCode,
   Route,
   ScanLine,
   ScanSearch,
@@ -1372,39 +1371,19 @@ POST /api/v1/events
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Scanner QR Code</p>
                   <h2 className="mt-2 text-2xl font-semibold">Apontar para pulseira do paciente</h2>
                 </div>
-                <a
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-background/70 px-3 text-sm font-medium hover:bg-background"
-                  href={SCANNER_CAPTURE_URL}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <ScanLine className="h-4 w-4" /> Abrir Scanner MV
-                </a>
               </div>
 
               <p className="mb-4 text-sm text-muted-foreground">
-                URL ativa do scanner: <span className="font-mono text-xs text-foreground">{SCANNER_CAPTURE_URL}</span>
+                Scanner incorporado na aba abaixo.
               </p>
 
               <div className="rounded-3xl border border-border bg-background/70 p-4 ss-gridline">
-                <div className="relative overflow-hidden rounded-2xl border border-lime-300/20 bg-[linear-gradient(135deg,#252a24_0%,#1e231e_100%)] p-5">
-                  <div className="absolute left-4 top-4 h-8 w-8 border-l-2 border-t-2 border-lime-300/60" />
-                  <div className="absolute right-4 top-4 h-8 w-8 border-r-2 border-t-2 border-lime-300/60" />
-                  <div className="absolute bottom-4 left-4 h-8 w-8 border-b-2 border-l-2 border-lime-300/60" />
-                  <div className="absolute bottom-4 right-4 h-8 w-8 border-b-2 border-r-2 border-lime-300/60" />
-
-                  <div className="mx-auto mt-10 max-w-md rounded-2xl border border-border bg-white/90 px-4 py-3 text-neutral-900">
-                    <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-                      <div>
-                        <p className="text-2xl font-semibold">M.S.</p>
-                        <p className="text-sm">Maria de Souza</p>
-                        <p className="text-xs text-neutral-600">Prontuário: 456789 | Sala: 01</p>
-                      </div>
-                      <QrCode className="h-16 w-16" />
-                    </div>
-                  </div>
-
-                  <p className="mt-8 text-center text-sm text-muted-foreground">Centralize o QR Code na área indicada</p>
+                <div className="overflow-hidden rounded-2xl border border-border bg-black/10">
+                  <iframe
+                    className="h-[620px] w-full bg-white"
+                    src={SCANNER_CAPTURE_URL}
+                    title="Scanner MV incorporado"
+                  />
                 </div>
 
                 <div className={`mt-4 rounded-2xl border p-4 ${scannerFeedbackDetails[scannerFeedback].chipClass}`}>
@@ -1439,18 +1418,10 @@ POST /api/v1/events
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                <div className="mt-5">
                   <Button className="h-12 border border-amber-300/35 bg-amber-300/80 font-semibold text-neutral-950 hover:bg-amber-300">
                     Confirmar evento
                   </Button>
-                  <a
-                    className="inline-flex h-12 items-center justify-center rounded-lg border border-border bg-background/80 px-4 text-sm font-medium hover:bg-background"
-                    href={SCANNER_CAPTURE_URL}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    Abrir captura em nova aba
-                  </a>
                 </div>
               </div>
             </div>
