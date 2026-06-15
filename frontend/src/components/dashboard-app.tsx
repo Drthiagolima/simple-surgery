@@ -17,7 +17,6 @@ import {
   Clock3,
   DoorClosed,
   FileText,
-  History,
   House,
   LucideDot,
   LoaderCircle,
@@ -39,6 +38,7 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   API_BASE_URL,
+  SCANNER_CAPTURE_URL,
   type AuthUser,
   type DashboardPayload,
   type EventCreatePayload,
@@ -1372,10 +1372,19 @@ POST /api/v1/events
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Scanner QR Code</p>
                   <h2 className="mt-2 text-2xl font-semibold">Apontar para pulseira do paciente</h2>
                 </div>
-                <Button size="sm" variant="outline">
-                  <History className="h-4 w-4" /> Histórico
-                </Button>
+                <a
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-background/70 px-3 text-sm font-medium hover:bg-background"
+                  href={SCANNER_CAPTURE_URL}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <ScanLine className="h-4 w-4" /> Abrir Scanner MV
+                </a>
               </div>
+
+              <p className="mb-4 text-sm text-muted-foreground">
+                URL ativa do scanner: <span className="font-mono text-xs text-foreground">{SCANNER_CAPTURE_URL}</span>
+              </p>
 
               <div className="rounded-3xl border border-border bg-background/70 p-4 ss-gridline">
                 <div className="relative overflow-hidden rounded-2xl border border-lime-300/20 bg-[linear-gradient(135deg,#252a24_0%,#1e231e_100%)] p-5">
@@ -1430,9 +1439,19 @@ POST /api/v1/events
                   </div>
                 </div>
 
-                <Button className="mt-5 h-12 w-full border border-amber-300/35 bg-amber-300/80 font-semibold text-neutral-950 hover:bg-amber-300">
-                  Confirmar evento
-                </Button>
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  <Button className="h-12 border border-amber-300/35 bg-amber-300/80 font-semibold text-neutral-950 hover:bg-amber-300">
+                    Confirmar evento
+                  </Button>
+                  <a
+                    className="inline-flex h-12 items-center justify-center rounded-lg border border-border bg-background/80 px-4 text-sm font-medium hover:bg-background"
+                    href={SCANNER_CAPTURE_URL}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Abrir captura em nova aba
+                  </a>
+                </div>
               </div>
             </div>
 

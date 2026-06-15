@@ -175,12 +175,15 @@ function resolveAgentsApiBaseUrl(): string {
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return "http://localhost:8787";
     }
+
+    return "https://api.simplesurgery.com.br";
   }
 
-  return "https://api.ortopguia.com.br";
+  return "https://api.simplesurgery.com.br";
 }
 
 export const AGENTS_API_BASE_URL = resolveAgentsApiBaseUrl();
+export const SCANNER_CAPTURE_URL = `${AGENTS_API_BASE_URL}/scanner/capture`;
 
 async function safeFetchJson<T>(path: string, token?: string): Promise<T | null> {
   try {
