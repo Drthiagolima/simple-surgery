@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     api_port: int = 8010
     frontend_origin: str = "http://localhost:3010"
-    database_sslmode: str = "prefer"
+    database_sslmode: str = "disable"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
