@@ -34,16 +34,16 @@ app.include_router(room_commands_router, prefix="/api/v1")
 app.include_router(scanner_router)
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"status": "ok", "service": settings.app_name}
+
+
 @app.get("/health")
-def health_check():
+def health() -> dict[str, str]:
     return {"status": "ok", "service": settings.app_name}
 
 
 @app.get("/api/health")
-def api_health_check():
-    return health_check()
-
-
-@app.get("/")
-def root():
+def api_health() -> dict[str, str]:
     return {"status": "ok", "service": settings.app_name}
