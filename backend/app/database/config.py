@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 class Settings(BaseSettings):
@@ -9,6 +10,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     api_port: int = 8010
     frontend_origin: str = "http://localhost:3010"
+    database_sslmode: str = "prefer"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -21,6 +23,21 @@ class Settings(BaseSettings):
             url = url.replace("+psycopg2", "+psycopg")
         elif url.startswith("postgresql://") and "+" not in url.split("://", 1)[0]:
             url = "postgresql+psycopg://" + url[len("postgresql://") :]
+
+        # Keep SSL behavior explicit for Render/managed Postgres and allow override via env.
+        if url.startswith("postgresql") and self.database_sslmode:
+            parts = urlsplit(url)
+            query_params = dict(parse_qsl(parts.query, keep_blank_values=True))
+            query_params["sslmode"] = self.database_sslmode
+            url = urlunsplit(
+                (
+                    parts.scheme,
+                    parts.netloc,
+                    parts.path,
+                    urlencode(query_params),
+                    parts.fragment,
+                )
+            )
         return url
 
     @property
